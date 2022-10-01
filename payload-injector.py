@@ -30,6 +30,8 @@ BUFFER_SIZE = 4096              # Default buffer size, no need to be changed!
 TIMEOUT = 5                     # Default TCP connection timeout, the socket will be closed after the timeout.
 MAX_THREADS = 1000              # Parallel connections at the same time 4000 is a nice.
 verbose = False
+PROXY = None 					# Proxy e.g: 55.214.25.3:80
+
 #########################################################################################
 
 # Configuring a logging system
@@ -67,7 +69,7 @@ def parse_headers(data):
 	return get_headers(data).split('\r\n')
 
 
-def check(ip):
+def check(ip, port):
 	if verbose:
 		logger.debug(_(f'{ip}:{DPORT} - Checking...', 'cyan'))
 
@@ -75,7 +77,7 @@ def check(ip):
 		# Using a TCP socket
 		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as conn:
 			conn.settimeout(TIMEOUT)
-			conn.connect((ip, DPORT))
+			conn.connect((ip, port))
 
 			if verbose:
 				logger.debug(_(f'{ip}:{DPORT} - Connected.', 'white'))
@@ -108,13 +110,14 @@ def check(ip):
 
 
 if __name__ == '__main__':
-	parser = argparse.ArgumentParser(description='Scanning and Injecting payload.')
+	parser = argparse.ArgumentParser(description='Scanning and Injecting payload, powred by MadMax.')
 	parser.add_argument('--host', help='The HOST that will be used with the payload.')
 	parser.add_argument('--port', type=int, default=80, help='A TCP port to connect to, (default 80), (e.g. 80, 443).')
 	parser.add_argument('--iprange', help='An IP range to scan and inject with payload (if not set, cloudfront ip ranges will be used), e.g. 55.25.32.0/24 or 68.156.8.0/16')
 	parser.add_argument('--verbose', action='store_true', help='Show debug/all messages output.')
 	parser.add_argument('--workers', type=int, default=TIMEOUT, help=f'Maximum concurrent TCP connections (default {MAX_THREADS})')
 	parser.add_argument('--timeout', type=int, default=5, help=f'A timeout before closing the TCP socket, (default {TIMEOUT}s)')
+	parser.add_argument('--proxy', help='Proxy e.g: 55.214.25.3:80')
 
 	args = parser.parse_args()
 
@@ -130,21 +133,32 @@ if __name__ == '__main__':
 	PAYLOAD = PAYLOAD.format(**{'HOST': HOST, 'ua': ua})
 	MAX_THREADS = int(args.workers) if args.workers else MAX_THREADS
 	TIMEOUT = int(args.timeout) if args.timeout else TIMEOUT
-
+	PROXY = args.proxy if args.proxy else PROXY
 
 	futures = {}
 	logger.info(_(f'''
 ############# Used Payload #############
 {PAYLOAD}########################################''', 'cyan'))
-	logger.info(_(f'Start scanning and injecting payload on TCP port {DPORT} ...', 'cyan'))
+
+	if PROXY:
+		logger.info(_(f'Start connecting via proxy ({PROXY}) and injecting payload...', 'cyan'))
+	else:
+		logger.info(_(f'Start scanning and injecting payload on TCP port {DPORT} ...', 'cyan'))
 
 	try:
 		# Create a thread pool to handle requests
 		ex = ThreadPoolExecutor(max_workers=MAX_THREADS)
 
-		for ip in ip_generator(iprange_list):
-			ip = str(ip) # required str casting
-			futures[ex.submit(check, ip)] = ip
+		# Use proxy
+		if ':' in PROXY:
+			proxy, port = str(PROXY).split(':')
+			port = int(port)
+			futures[ex.submit(check, proxy, port)] = proxy
+		else:
+			# Use Cloudfront ip ranges.
+			for ip in ip_generator(iprange_list):
+				ip = str(ip) # required str casting
+				futures[ex.submit(check, ip, DPORT)] = ip
 
 		for future in as_completed(futures):
 			ip = futures[future]
