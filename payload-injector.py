@@ -147,6 +147,7 @@ if __name__ == '__main__':
 
 	try:
 		# Create a thread pool to handle requests
+		MAX_THREADS = 5 if PROXY else MAX_THREADS
 		ex = ThreadPoolExecutor(max_workers=MAX_THREADS)
 
 		# Use proxy
