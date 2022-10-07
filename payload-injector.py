@@ -113,17 +113,17 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Scanning and Injecting payload, powred by MadMax.')
 	parser.add_argument('--host', help='The HOST that will be used with the payload.')
 	parser.add_argument('--port', type=int, default=80, help='A TCP port to connect to, (default 80), (e.g. 80, 443).')
-	parser.add_argument('--iprange', help='An IP range to scan and inject with payload (if not set, cloudfront ip ranges will be used), e.g. 55.25.32.0/24 or 68.156.8.0/16')
+	parser.add_argument('--iprange', action='append', help='An IP range to scan and inject with payload (if not set, cloudfront ip ranges will be used), e.g. 55.25.32.0/24 or 68.156.8.0/16')
 	parser.add_argument('--verbose', action='store_true', help='Show debug/all messages output.')
-	parser.add_argument('--workers', type=int, default=TIMEOUT, help=f'Maximum concurrent TCP connections (default {MAX_THREADS})')
-	parser.add_argument('--timeout', type=int, default=5, help=f'A timeout before closing the TCP socket, (default {TIMEOUT}s)')
+	parser.add_argument('--workers', type=int, default=MAX_THREADS, help=f'Maximum concurrent TCP connections (default {MAX_THREADS})')
+	parser.add_argument('--timeout', type=int, default=TIMEOUT, help=f'A timeout before closing the TCP socket, (default {TIMEOUT}s)')
 	parser.add_argument('--proxy', help='Proxy e.g: 55.214.25.3:80')
 
 	args = parser.parse_args()
 
 	# Override default variables
 	if args.iprange:
-		iprange_list = [args.iprange]
+		iprange_list = args.iprange
 	else:
 		iprange_list = cloudfront_global_list + cloudfront_regional_list
 
@@ -151,7 +151,7 @@ if __name__ == '__main__':
 		ex = ThreadPoolExecutor(max_workers=MAX_THREADS)
 
 		# Use proxy
-		if ':' in PROXY:
+		if PROXY is not None and ':' in PROXY:
 			proxy, port = str(PROXY).split(':')
 			port = int(port)
 			futures[ex.submit(check, proxy, port)] = proxy
