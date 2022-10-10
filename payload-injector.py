@@ -93,14 +93,15 @@ def check(ip, port):
 			logger.debug(_(f'{ip}:{DPORT} - {len(data)} Bytes received.', 'magenta'))
 			logger.debug(_(f"{ip}:{DPORT} - {get_headers(data)}", 'blue'))
 
-			status_code = int(parse_headers(data)[0].split(' ')[1])
+			if data:
+				status_code = int(parse_headers(data)[0].split(' ')[1])
 
-			if status_code == 101:
-				logger.info(_(f'{ip}:{DPORT} - STATUS_CODE: {status_code}', 'green'))
-			elif 200 <= status_code < 300:
-				logger.info(_(f'{ip}:{DPORT} - STATUS_CODE: {status_code}', 'magenta'))
-			# else:
-			#     logger.debug(_(f"STATUS_CODE: {status_code}", 'magenta'))
+				if status_code == 101:
+					logger.info(_(f'{ip}:{DPORT} - STATUS_CODE: {status_code}', 'green'))
+				elif 200 <= status_code < 300:
+					logger.info(_(f'{ip}:{DPORT} - STATUS_CODE: {status_code}', 'magenta'))
+				# else:
+				#     logger.debug(_(f"STATUS_CODE: {status_code}", 'magenta'))
 
 	except (OSError, socket.timeout) as e:
 		if verbose:
